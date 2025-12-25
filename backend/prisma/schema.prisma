@@ -1,0 +1,197 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String?  @unique
+  password  String
+  avatar    String?
+  status    UserStatus @default(OFFLINE)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  createdRooms    Room[]        @relation("RoomCreator")
+  roomParticipants RoomParticipant[]
+  friendships1    Friendship[]  @relation("User1")
+  friendships2    Friendship[]  @relation("User2")
+  messages        Message[]
+  playlistMembers PlaylistMember[]
+  createdPlaylists Playlist[]   @relation("PlaylistCreator")
+
+  @@map("users")
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  user1Id   String
+  user2Id   String
+  status    FriendshipStatus @default(PENDING)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user1 User @relation("User1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2 User @relation("User2", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  @@unique([user1Id, user2Id])
+  @@map("friendships")
+}
+
+model Room {
+  id            String   @id @default(cuid())
+  name          String?
+  creatorId     String
+  isActive      Boolean  @default(true)
+  currentSong   Json?    // Store current song info (title, artist, duration, etc.)
+  playbackPosition Float @default(0) // Current position in seconds
+  isPlaying     Boolean  @default(false)
+  syncTimestamp DateTime @default(now())
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  creator      User               @relation("RoomCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  participants RoomParticipant[]
+  messages     Message[]
+  playlist     RoomPlaylist?
+
+  @@map("rooms")
+}
+
+model RoomParticipant {
+  id       String @id @default(cuid())
+  roomId   String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  // Relationships
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@map("room_participants")
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  roomId    String
+  senderId  String
+  content   String
+  type      MessageType @default(TEXT)
+  
+  createdAt DateTime @default(now())
+
+  // Relationships
+  room   Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Playlist {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  creatorId     String
+  isCollaborative Boolean @default(false)
+  isPrivate     Boolean  @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  creator  User             @relation("PlaylistCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members  PlaylistMember[]
+  songs    PlaylistSong[]
+  roomPlaylist RoomPlaylist?
+
+  @@map("playlists")
+}
+
+model PlaylistMember {
+  id         String @id @default(cuid())
+  playlistId String
+  userId     String
+  role       PlaylistRole @default(MEMBER)
+  
+  joinedAt DateTime @default(now())
+
+  // Relationships
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, userId])
+  @@map("playlist_members")
+}
+
+model PlaylistSong {
+  id         String @id @default(cuid())
+  playlistId String
+  title      String
+  artist     String
+  album      String?
+  duration   Int?     // Duration in seconds
+  spotifyId  String?  // External service ID
+  youtubeId  String?
+  addedBy    String
+  position   Int      // Order in playlist
+  
+  addedAt DateTime @default(now())
+
+  // Relationships
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@map("playlist_songs")
+}
+
+model RoomPlaylist {
+  id         String @id @default(cuid())
+  roomId     String @unique
+  playlistId String @unique
+  
+  // Relationships
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@map("room_playlists")
+}
+
+// Enums
+enum UserStatus {
+  ONLINE
+  OFFLINE
+  LISTENING
+  AWAY
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+enum MessageType {
+  TEXT
+  VOICE
+  PHOTO
+  SYSTEM
+}
+
+enum PlaylistRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
