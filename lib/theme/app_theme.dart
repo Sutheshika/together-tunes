@@ -3,16 +3,22 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color primaryColor = Color(0xFF6B46C1); // Purple
-  static const Color secondaryColor = Color(0xFFEC4899); // Pink
-  static const Color backgroundColor = Color(0xFF0F0F23); // Dark blue
-  static const Color surfaceColor = Color(0xFF1E1E3F); // Darker blue
-  static const Color cardColor = Color(0xFF2A2A5A); // Medium blue
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFB4B4CC);
-  static const Color accent = Color(0xFF10B981); // Green for success
-  static const Color warning = Color(0xFFF59E0B); // Orange
-  static const Color error = Color(0xFFEF4444); // Red
+  // Teal + Purple Color Palette (Balanced, Sophisticated)
+  static const Color darkTeal = Color(0xFF004D40); // Dark teal
+  static const Color mediumTeal = Color(0xFF00796B); // Medium teal
+  static const Color brightTeal = Color(0xFF009688); // Bright teal
+  static const Color lightTeal = Color(0xFF26A69A); // Light teal
+  static const Color primaryColor = Color(0xFF009688); // Primary teal
+  static const Color secondaryColor = Color(0xFF7B1FA2); // Purple
+  static const Color cyanAccent = Color(0xFF4DB8A8); // Light teal accent
+  static const Color backgroundColor = Color(0xFF0D1B19); // Very dark teal
+  static const Color surfaceColor = Color(0xFF132C2A); // Dark teal surface
+  static const Color cardColor = Color(0xFF1A3A36); // Dark teal card
+  static const Color textPrimary = Color(0xFFFFFFFF); // White text
+  static const Color textSecondary = Color(0xFFA8D5CC); // Light teal text
+  static const Color accent = Color(0xFF7B1FA2); // Purple accent
+  static const Color warning = Color(0xFFFFA726); // Orange
+  static const Color error = Color(0xFFEF5350); // Red
 
   static ThemeData get theme => ThemeData(
     useMaterial3: true,
@@ -56,8 +62,8 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
-        elevation: 4,
-        shadowColor: primaryColor.withOpacity(0.3),
+        elevation: 8,
+        shadowColor: cyanAccent.withOpacity(0.5),
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -171,23 +177,49 @@ class AppTheme {
     ),
   );
 
-  // Gradient backgrounds
+  // Gradient backgrounds - Teal + Purple (Balanced, Sophisticated)
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [primaryColor, secondaryColor],
+    colors: [darkTeal, primaryColor, secondaryColor],
   );
 
   static const LinearGradient backgroundGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [backgroundColor, surfaceColor],
+    colors: [backgroundColor, surfaceColor, darkTeal],
   );
 
-  // Custom shadows
+  static const LinearGradient blueGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [darkTeal, primaryColor, lightTeal, secondaryColor],
+  );
+
+  static const LinearGradient lightBlueGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primaryColor, lightTeal, secondaryColor],
+  );
+
+  // NEW: Cyan accent gradient for special elements
+  static const LinearGradient cyanGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primaryColor, cyanAccent],
+  );
+
+  // NEW: Glowing gradient for active states
+  static const LinearGradient glowingGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [cyanAccent, secondaryColor, cyanAccent],
+  );
+
+  // Custom shadows - Teal tinted with Purple glow
   static List<BoxShadow> get cardShadow => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.15),
+      color: darkTeal.withOpacity(0.25),
       blurRadius: 20,
       offset: const Offset(0, 10),
     ),
@@ -195,9 +227,32 @@ class AppTheme {
 
   static List<BoxShadow> get buttonShadow => [
     BoxShadow(
-      color: primaryColor.withOpacity(0.3),
+      color: primaryColor.withOpacity(0.4),
       blurRadius: 15,
       offset: const Offset(0, 5),
+    ),
+  ];
+
+  // NEW: Glowing shadow for active/playing states
+  static List<BoxShadow> get glowingShadow => [
+    BoxShadow(
+      color: secondaryColor.withOpacity(0.6),
+      blurRadius: 25,
+      offset: const Offset(0, 8),
+    ),
+    BoxShadow(
+      color: secondaryColor.withOpacity(0.3),
+      blurRadius: 40,
+      offset: const Offset(0, 15),
+    ),
+  ];
+
+  // NEW: Subtle glow for hover states
+  static List<BoxShadow> get subtleGlow => [
+    BoxShadow(
+      color: cyanAccent.withOpacity(0.25),
+      blurRadius: 12,
+      offset: const Offset(0, 4),
     ),
   ];
 }
