@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
+import '../rooms/rooms_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -106,7 +107,7 @@ class HomeScreen extends StatelessWidget {
                 icon: Icons.add,
                 title: 'Create Room',
                 subtitle: 'Start listening together',
-                onTap: () {},
+                onTap: () => _navigateToRoomsScreen(context),
                 delay: 0,
               ),
             ),
@@ -116,7 +117,7 @@ class HomeScreen extends StatelessWidget {
                 icon: Icons.search,
                 title: 'Join Room',
                 subtitle: 'Find friends\' rooms',
-                onTap: () {},
+                onTap: () => _navigateToRoomsScreen(context),
                 delay: 200,
               ),
             ),
@@ -433,6 +434,25 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  void _navigateToRoomsScreen(BuildContext context) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const RoomsScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: animation.drive(
+              Tween(begin: const Offset(0.0, 1.0), end: Offset.zero)
+                .chain(CurveTween(curve: Curves.easeInOut)),
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
     );
   }
 }

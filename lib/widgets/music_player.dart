@@ -349,26 +349,48 @@ class _MusicPlayerState extends State<MusicPlayer> with TickerProviderStateMixin
                       if (widget.roomId != null) ...[
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppTheme.accent.withOpacity(0.2),
+                            color: AppTheme.cyanAccent.withOpacity(0.15),
+                            border: Border.all(
+                              color: AppTheme.cyanAccent.withOpacity(0.5),
+                              width: 1.5,
+                            ),
                             borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.cyanAccent.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 0),
+                              ),
+                            ],
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.radio,
-                                size: 14,
-                                color: AppTheme.accent,
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppTheme.cyanAccent,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.cyanAccent.withOpacity(0.8),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 0),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               Text(
-                                widget.isHost ? 'Broadcasting' : 'Synced',
+                                widget.isHost ? '🔴 Broadcasting' : '✓ Synced',
                                 style: TextStyle(
-                                  color: AppTheme.accent,
+                                  color: AppTheme.cyanAccent,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ],
@@ -448,10 +470,14 @@ class _MusicPlayerState extends State<MusicPlayer> with TickerProviderStateMixin
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            gradient: widget.isHost ? AppTheme.primaryGradient : null,
+                            gradient: widget.isHost 
+                              ? (isPlaying ? AppTheme.glowingGradient : AppTheme.cyanGradient)
+                              : null,
                             color: widget.isHost ? null : AppTheme.textSecondary.withOpacity(0.3),
                             shape: BoxShape.circle,
-                            boxShadow: widget.isHost ? AppTheme.buttonShadow : null,
+                            boxShadow: widget.isHost 
+                              ? (isPlaying ? AppTheme.glowingShadow : AppTheme.buttonShadow)
+                              : null,
                           ),
                           child: Icon(
                             isPlaying ? Icons.pause : Icons.play_arrow,
