@@ -2,10 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
+import '../../services/user_service.dart';
 import '../rooms/rooms_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late UserService _userService;
+
+  @override
+  void initState() {
+    super.initState();
+    _userService = UserService();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,46 +29,57 @@ class HomeScreen extends StatelessWidget {
           gradient: AppTheme.backgroundGradient,
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                _buildHeader(context),
-                const SizedBox(height: 32),
-                
-                // Quick Actions
-                _buildQuickActions(context),
-                const SizedBox(height: 32),
-                
-                // Recent Activity
-                _buildRecentActivity(context),
-                const SizedBox(height: 32),
-                
-                // Active Rooms
-                _buildActiveRooms(context),
-                const SizedBox(height: 32),
-                
-                // Music Recommendations
-                _buildMusicRecommendations(context),
-              ],
-            ),
+          child: StreamBuilder<Map<String, dynamic>>(
+            stream: _userService.userDataStream,
+            initialData: _userService.getUserData(),
+            builder: (context, snapshot) {
+              final userData = snapshot.data ?? {};
+              final username = userData['username'] as String? ?? 'User';
+              
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header with username
+                    _buildHeader(context, username),
+                    const SizedBox(height: 32),
+                    
+                    // Quick Actions
+                    _buildQuickActions(context),
+                    const SizedBox(height: 32),
+                    
+                    // Recent Activity
+                    _buildRecentActivity(context),
+                    const SizedBox(height: 32),
+                    
+                    // Active Rooms (will show empty state initially)
+                    _buildActiveRooms(context),
+                    const SizedBox(height: 32),
+                    
+                    // Music Recommendations
+                    _buildMusicRecommendations(context),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, String username) {
     return Row(
       children: [
+        AppBackButton(),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome back!',
+                'Welcome, $username! 👋',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   color: AppTheme.textPrimary,
                   fontWeight: FontWeight.bold,

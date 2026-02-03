@@ -8,7 +8,7 @@ class ApiConfig {
   // - Localhost: 'http://localhost:3001' (only works on same device)
   // - Cloud: 'https://together-tunes-api.com'
   
-  static const String baseUrl = 'http://192.168.227.171:3001';
+  static const String baseUrl = 'http://localhost:3001';
   
   // API Endpoints
   static const String registerEndpoint = '/api/auth/register';

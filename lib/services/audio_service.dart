@@ -4,7 +4,6 @@ import 'dart:async';
 class AudioService {
   static final AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
-  AudioService._internal();
 
   final AudioPlayer _audioPlayer = AudioPlayer();
   final StreamController<Duration> _positionController =
@@ -22,7 +21,7 @@ class AudioService {
   Duration get duration => _audioPlayer.duration ?? Duration.zero;
   bool get isPlaying => _audioPlayer.playing;
 
-  AudioService._() {
+  AudioService._internal() {
     _setupListeners();
   }
 
@@ -56,10 +55,13 @@ class AudioService {
   Future<void> loadAudio(String url) async {
     try {
       print('🎵 Loading audio from: $url');
+      print('🎵 Current audio player state: ${_audioPlayer.playerState}');
       await _audioPlayer.setUrl(url);
       print('🎵 Audio loaded successfully');
+      print('🎵 Duration: ${_audioPlayer.duration}');
     } catch (e) {
       print('🎵 Error loading audio: $e');
+      print('🎵 Error details: ${e.toString()}');
       rethrow;
     }
   }
@@ -79,8 +81,11 @@ class AudioService {
   /// Play audio
   Future<void> play() async {
     try {
+      print('🎵 About to call _audioPlayer.play()');
+      print('🎵 Current playing state before: ${_audioPlayer.playing}');
       await _audioPlayer.play();
       print('🎵 Playing');
+      print('🎵 Current playing state after: ${_audioPlayer.playing}');
     } catch (e) {
       print('🎵 Error playing: $e');
       rethrow;

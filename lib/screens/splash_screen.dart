@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
+import '../services/user_service.dart';
 import 'auth/welcome_screen.dart';
+import 'main_app.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -11,19 +13,27 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  late UserService _userService;
+
   @override
   void initState() {
     super.initState();
+    _userService = UserService();
     _navigateToHome();
   }
 
   _navigateToHome() async {
     await Future.delayed(const Duration(milliseconds: 3000));
     if (mounted) {
+      // Check if user is already logged in
+      final isLoggedIn = _userService.isLoggedIn;
+      
+      final nextScreen = isLoggedIn ? const MainApp() : const WelcomeScreen();
+      
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, _) => const WelcomeScreen(),
+          pageBuilder: (context, animation, _) => nextScreen,
           transitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);

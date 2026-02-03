@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
 import '../../config/api_config.dart';
+import '../../services/user_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -47,8 +48,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // TODO: Store token and user data
-        print('Login successful: ${data['user']['username']}');
+        final user = data['user'];
+        
+        // Store user data in UserService
+        UserService().setUserData(
+          userId: user['id'],
+          username: user['username'],
+          email: user['email'],
+          avatar: user['avatar'],
+          bio: user['bio'],
+        );
+        
+        print('✅ Login successful: ${user['username']}');
+        
         // Navigate to main app
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/main');
@@ -179,11 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Back Button
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_ios, color: AppTheme.textPrimary),
-                  padding: EdgeInsets.zero,
-                ).animate().fadeIn().slideX(begin: -0.2),
+                AppBackButton(),
 
                 const SizedBox(height: 40),
 

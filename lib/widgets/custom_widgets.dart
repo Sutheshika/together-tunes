@@ -244,3 +244,32 @@ class CustomTextField extends StatelessWidget {
     ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.2);
   }
 }
+
+/// Reusable back button widget for all screens
+class AppBackButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final Color? color;
+  final double? size;
+
+  const AppBackButton({
+    super.key,
+    this.onPressed,
+    this.color,
+    this.size = 24,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed ?? () => Navigator.pop(context),
+      icon: Icon(
+        Icons.arrow_back_ios,
+        color: color ?? AppTheme.textPrimary,
+        size: size,
+      ),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+      tooltip: 'Go back',
+    ).animate().fadeIn().slideX(begin: -0.2);
+  }
+}

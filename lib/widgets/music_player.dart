@@ -9,12 +9,14 @@ class MusicPlayer extends StatefulWidget {
   final String? roomId;
   final bool isHost;
   final Function(Map<String, dynamic>)? onPlayerEvent;
+  final Map<String, dynamic>? currentSongData;
   
   const MusicPlayer({
     super.key,
     this.roomId,
     this.isHost = false,
     this.onPlayerEvent,
+    this.currentSongData,
   });
 
   @override
@@ -54,6 +56,11 @@ class _MusicPlayerState extends State<MusicPlayer> with TickerProviderStateMixin
     _audioService = AudioService();
     _socketService = SocketService();
     
+    // Use passed song data or default
+    if (widget.currentSongData != null) {
+      currentSong = widget.currentSongData!;
+    }
+    
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -65,6 +72,7 @@ class _MusicPlayerState extends State<MusicPlayer> with TickerProviderStateMixin
 
     _initializeSocket();
     _setupAudioListeners();
+    _preloadAudio(); // Preload the song audio
   }
 
   void _setupAudioListeners() {
@@ -183,23 +191,70 @@ class _MusicPlayerState extends State<MusicPlayer> with TickerProviderStateMixin
     }
   }
 
-  void _togglePlayPause() {
+  Future<void> _preloadAudio() async {
+    try {
+      final url = currentSong['url'] ?? 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+      print('🎵 Preloading audio: $url');
+      await _audioService.loadAudio(url);
+      print('🎵 Audio preloaded successfully');
+    } catch (e) {
+      print('🎵 Error preloading audio: $e');
+    }
+  }
+
+  void _togglePlayPause() async {
     if (!widget.isHost) return; // Only host can control playback
+    
+    print('🎵 _togglePlayPause called, isPlaying=$isPlaying');
     
     if (isPlaying) {
       // Pause
-      _audioService.pause().then((_) {
+      try {
+        print('🎵 Pausing audio...');
+        await _audioService.pause();
+        setState(() => isPlaying = false);
         _rotationController.stop();
         _pulseController.stop();
         _socketService.pauseSong();
-      });
+        print('🎵 Pause completed');
+      } catch (e) {
+        print('Error pausing: $e');
+      }
     } else {
-      // Play
-      _audioService.play().then((_) {
+      // Play - audio should be preloaded already
+      try {
+        print('🎵 Starting play sequence...');
+        setState(() => isLoading = true);
+        
+        // Ensure audio is loaded
+        final url = currentSong['url'] ?? 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+        print('🎵 Loading audio from: $url');
+        await _audioService.loadAudio(url);
+        print('🎵 Audio loaded, now playing...');
+        
+        // Play the audio
+        await _audioService.play();
+        print('🎵 Play command completed');
+        
+        setState(() {
+          isPlaying = true;
+          isLoading = false;
+        });
+        
         _rotationController.repeat();
         _pulseController.repeat(reverse: true);
         _socketService.playSong(currentSong, position: currentPosition / 1000);
-      });
+        print('🎵 Socket event emitted');
+      } catch (e) {
+        print('Error playing song: $e');
+        print('🎵 Full error: ${e.toString()}');
+        setState(() => isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error playing song: $e')),
+          );
+        }
+      }
     }
 
     // Send sync event to room (backward compatibility)

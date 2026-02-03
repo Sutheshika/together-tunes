@@ -68,6 +68,8 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> with TickerProviderSt
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
+          AppBackButton(),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

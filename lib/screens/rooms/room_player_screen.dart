@@ -8,7 +8,9 @@ import '../../widgets/music_player.dart';
 import '../../services/audio_service.dart';
 import '../../services/mock_music_library.dart';
 import '../../services/socket_service.dart';
+import '../../services/playlist_service.dart';
 import 'dart:async';
+import 'song_browser_screen.dart';
 
 class RoomPlayerScreen extends StatefulWidget {
   final String roomName;
@@ -37,10 +39,13 @@ class _RoomPlayerScreenState extends State<RoomPlayerScreen> {
   bool isPlayerVisible = true;
   late StreamSubscription _chatSubscription;
   late StreamSubscription _memberUpdateSubscription;
+  late PlaylistService _playlistService;
 
   @override
   void initState() {
     super.initState();
+    _playlistService = PlaylistService();
+    _playlistService.initializeRoomPlaylist(widget.roomId);
     _initializeRoom();
     _initializeSocketListeners();
     _startMockChat();
@@ -95,38 +100,15 @@ class _RoomPlayerScreenState extends State<RoomPlayerScreen> {
   }
 
   void _initializeRoom() {
-    // Initialize members list
+    // Initialize with only current user - others join via socket events
     currentMembers = [
       {'name': 'You', 'status': 'online'},
-      {'name': 'Sarah Johnson', 'status': 'online'},
-      {'name': 'Alex Chen', 'status': 'listening'},
-      {'name': 'Mike Wilson', 'status': 'online'},
     ];
     
     // Add some initial chat messages
-    chatMessages = [
-      {
-        'user': 'Sarah Johnson',
-        'message': 'Hey everyone! 👋',
-        'timestamp': DateTime.now().subtract(const Duration(minutes: 5)),
-        'isMe': false,
-      },
-      {
-        'user': 'Alex Chen',
-        'message': 'Great song choice!',
-        'timestamp': DateTime.now().subtract(const Duration(minutes: 3)),
-        'isMe': false,
-      },
-      {
-        'user': 'You',
-        'message': 'Thanks! Let\'s sync up 🎵',
-        'timestamp': DateTime.now().subtract(const Duration(minutes: 2)),
-        'isMe': true,
-      },
-    ];
     
-    // Load first song
-    _loadSong(MockMusicLibrary.songs[0]);
+    // Start with empty chat - messages will come from socket events
+    chatMessages = [];
   }
 
   void _loadSong(Map<String, dynamic> song) {
@@ -239,22 +221,75 @@ class _RoomPlayerScreenState extends State<RoomPlayerScreen> {
                     Column(
                       children: [
                         _buildRoomInfo(),
-                        Expanded(child: _buildChatSection()),
+                        // Show queue list when songs are added
+                        StreamBuilder<List<Map<String, dynamic>>>(
+                          stream: _playlistService.queueStream,
+                          initialData: _playlistService.getQueue(widget.roomId),
+                          builder: (context, snapshot) {
+                            final queue = snapshot.data ?? [];
+                            if (queue.isEmpty) return const SizedBox.shrink();
+                            return _buildQueueList(queue);
+                          },
+                        ),
+                        const Spacer(),
                       ],
                     ),
                     
-                    // Music Player Overlay
+                    // Music Player Overlay - Only show if songs in queue
                     if (isPlayerVisible)
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: MusicPlayer(
-                          roomId: widget.roomId,
-                          isHost: widget.isHost,
-                          onPlayerEvent: _handlePlayerEvent,
-                        ).animate().slideY(begin: 1.0),
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: _playlistService.queueStream,
+                        initialData: _playlistService.getQueue(widget.roomId),
+                        builder: (context, snapshot) {
+                          final queue = snapshot.data ?? [];
+                          
+                          // Only show player if there are songs in queue
+                          if (queue.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          
+                          final currentSong = _playlistService.getCurrentSong(widget.roomId);
+                          
+                          return Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: MusicPlayer(
+                              roomId: widget.roomId,
+                              isHost: widget.isHost,
+                              onPlayerEvent: _handlePlayerEvent,
+                              currentSongData: currentSong,
+                            ).animate().slideY(begin: 1.0),
+                          );
+                        },
                       ),
+                    
+                    // Floating Chat Button - Show when playing
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: _playlistService.queueStream,
+                      initialData: _playlistService.getQueue(widget.roomId),
+                      builder: (context, snapshot) {
+                        final queue = snapshot.data ?? [];
+                        if (queue.isEmpty) return const SizedBox.shrink();
+                        
+                        return Positioned(
+                          bottom: 20 + (isPlayerVisible ? 350 : 0),
+                          right: 20,
+                          child: FloatingActionButton(
+                            heroTag: 'chat_button',
+                            onPressed: () {
+                              _showChatModal(context);
+                            },
+                            backgroundColor: AppTheme.accent,
+                            mini: true,
+                            child: const Icon(
+                              Icons.chat_bubble,
+                              color: Colors.white,
+                            ),
+                          ).animate().scale().fade(),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -270,11 +305,7 @@ class _RoomPlayerScreenState extends State<RoomPlayerScreen> {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_ios, color: AppTheme.textPrimary),
-            padding: EdgeInsets.zero,
-          ),
+          AppBackButton(),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,6 +328,26 @@ class _RoomPlayerScreenState extends State<RoomPlayerScreen> {
               ],
             ),
           ),
+          // Add Songs button
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SongBrowserScreen(
+                    roomId: widget.roomId,
+                    roomName: widget.roomName,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.queue_music,
+              color: AppTheme.textPrimary,
+            ),
+            tooltip: 'Add Songs',
+          ).animate().fadeIn(delay: 400.ms).scale(),
+          // Toggle player visibility
           IconButton(
             onPressed: () {
               setState(() {
@@ -307,6 +358,7 @@ class _RoomPlayerScreenState extends State<RoomPlayerScreen> {
               isPlayerVisible ? Icons.keyboard_arrow_down : Icons.music_note,
               color: AppTheme.textPrimary,
             ),
+            tooltip: 'Show/Hide Player',
           ).animate().fadeIn(delay: 400.ms).scale(),
         ],
       ),
@@ -316,107 +368,352 @@ class _RoomPlayerScreenState extends State<RoomPlayerScreen> {
   Widget _buildRoomInfo() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Active Members
-            Row(
-              children: [
-                const Icon(
-                  Icons.people,
-                  color: AppTheme.accent,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Active Members',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w600,
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _playlistService.queueStream,
+        initialData: _playlistService.getQueue(widget.roomId),
+        builder: (context, snapshot) {
+          final queue = snapshot.data ?? [];
+          
+          // Show empty state when no songs
+          if (queue.isEmpty) {
+            return GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.music_note_outlined,
+                    color: AppTheme.accent,
+                    size: 48,
                   ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No songs queued',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Click the 🎵 button above to add songs',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  GradientButton(
+                    text: 'Add Songs Now',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SongBrowserScreen(
+                            roomId: widget.roomId,
+                            roomName: widget.roomName,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: Icons.add,
+                  ),
+                ],
+              ),
+            );
+          }
+          
+          // Show active members when songs are queued
+          return GlassCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Active Members
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.people,
+                      color: AppTheme.accent,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Active Members',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${currentMembers.length} online',
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                Text(
-                  '${currentMembers.length} online',
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
+                const SizedBox(height: 12),
+                
+                // Members List
+                SizedBox(
+                  height: 60,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: currentMembers.length,
+                    itemBuilder: (context, index) {
+                      final member = currentMembers[index];
+                      final isOnline = member['status'] == 'online' || member['status'] == 'listening';
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(right: 12),
+                        child: Column(
+                          children: [
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    gradient: AppTheme.primaryGradient,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      member['name']![0],
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (isOnline)
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.accent,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppTheme.cardColor,
+                                          width: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              member['name']!,
+                              style: const TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            
-            // Members List
-            SizedBox(
-              height: 60,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: currentMembers.length,
-                itemBuilder: (context, index) {
-                  final member = currentMembers[index];
-                  final isOnline = member['status'] == 'online' || member['status'] == 'listening';
-                  
-                  return Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Column(
-                      children: [
-                        Stack(
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildQueueList(List<Map<String, dynamic>> queue) {
+    if (queue.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.playlist_play,
+                  color: AppTheme.accent,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Queue (${queue.length} songs)',
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.35,
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: queue.length,
+              itemBuilder: (context, index) {
+                final song = queue[index];
+                final currentSong = _playlistService.getCurrentSong(widget.roomId);
+                final isCurrentSong = song['id'] == currentSong?['id'];
+
+                return GestureDetector(
+                  onTap: () {
+                    // Play the selected song
+                    _playlistService.playAtIndex(widget.roomId, index);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    child: GlassCard(
+                      padding: const EdgeInsets.all(12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isCurrentSong
+                                ? AppTheme.accent
+                                : Colors.transparent,
+                            width: isCurrentSong ? 2 : 0,
+                          ),
+                        ),
+                        child: Row(
                           children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                gradient: AppTheme.primaryGradient,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  member['name']![0],
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                            // Album Cover
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                song['cover'] ?? '',
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 50,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.surfaceColor,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.music_note,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  );
+                                },
                               ),
                             ),
-                            if (isOnline)
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    color: member['status'] == 'listening' 
-                                        ? AppTheme.accent 
-                                        : Colors.green,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 2),
+                            const SizedBox(width: 12),
+                            // Song Info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    song['title'] ?? 'Unknown Title',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: isCurrentSong
+                                          ? AppTheme.accent
+                                          : AppTheme.textPrimary,
+                                      fontSize: 13,
+                                      fontWeight: isCurrentSong
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                    ),
                                   ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    song['artist'] ?? 'Unknown Artist',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Playing Indicator or Index
+                            if (isCurrentSong)
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  color: AppTheme.accent,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              )
+                            else
+                              Text(
+                                '${index + 1}',
+                                style: const TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          member['name']!.split(' ')[0],
-                          style: const TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ).animate().fadeIn(delay: (600 + index * 100).ms).scale();
-                },
-              ),
+                  ),
+                );
+              },
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChatModal(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.9,
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+            minWidth: MediaQuery.of(context).size.width * 0.8,
+          ),
+          decoration: BoxDecoration(
+            gradient: AppTheme.backgroundGradient,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppTheme.accent.withOpacity(0.3),
+              width: 1.5,
+            ),
+          ),
+          child: _buildChatSection(),
         ),
       ),
-    ).animate().fadeIn(delay: 800.ms).slideY(begin: -0.3);
+    );
   }
 
   Widget _buildChatSection() {

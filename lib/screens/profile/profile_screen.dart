@@ -1,10 +1,94 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
+import '../../services/user_service.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late UserService _userService;
+  late TextEditingController _usernameController;
+  late TextEditingController _bioController;
+  bool _isEditing = false;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _userService = UserService();
+    final userData = _userService.getUserData();
+    _usernameController = TextEditingController(text: userData['username'] ?? '');
+    _bioController = TextEditingController(text: userData['bio'] ?? '');
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _bioController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    setState(() => _isSaving = true);
+    
+    try {
+      final userId = _userService.userId;
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not logged in')),
+        );
+        return;
+      }
+
+      final response = await http.put(
+        Uri.parse('http://localhost:3001/api/users/$userId/profile'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': _usernameController.text.trim(),
+          'bio': _bioController.text.trim(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _userService.updateProfile(
+          username: data['user']['username'],
+          bio: data['user']['bio'],
+        );
+        
+        setState(() => _isEditing = false);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: AppTheme.accent,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update profile'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error saving profile: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() => _isSaving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,27 +98,51 @@ class ProfileScreen extends StatelessWidget {
           gradient: AppTheme.backgroundGradient,
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildHeader(context),
-                _buildUserStats(context),
-                _buildQuickActions(context),
-                _buildRecentActivity(context),
-                _buildSettings(context),
-              ],
-            ),
+          child: StreamBuilder<Map<String, dynamic>>(
+            stream: _userService.userDataStream,
+            initialData: _userService.getUserData(),
+            builder: (context, snapshot) {
+              final userData = snapshot.data ?? {};
+              final username = userData['username'] as String? ?? 'User';
+              final email = userData['email'] as String? ?? '';
+              final bio = userData['bio'] as String? ?? '';
+              
+              // Update controllers if not editing
+              if (!_isEditing) {
+                _usernameController.text = username;
+                _bioController.text = bio;
+              }
+              
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildHeader(context, username, bio),
+                    _buildUserStats(context),
+                    _buildQuickActions(context),
+                    _buildRecentActivity(context),
+                    _buildSettings(context),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, String username, String bio) {
     return Container(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
+          // Back Button
+          Row(
+            children: [
+              AppBackButton(),
+              const Spacer(),
+            ],
+          ),
           // Profile Picture
           Stack(
             children: [
@@ -55,18 +163,21 @@ class ProfileScreen extends StatelessWidget {
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    color: Colors.white,
-                    size: 18,
+                child: GestureDetector(
+                  onTap: _isEditing ? null : () {},
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                 ),
               ).animate().scale(delay: 600.ms),
@@ -74,40 +185,98 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           
-          // User Info
-          Text(
-            'John Doe',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.textPrimary,
-              fontWeight: FontWeight.bold,
-            ),
-          ).animate().fadeIn(delay: 400.ms),
-          
-          Text(
-            '@johndoe',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondary,
-            ),
-          ).animate().fadeIn(delay: 500.ms),
-          
-          const SizedBox(height: 12),
-          
-          Text(
-            'Music lover • Playlist curator • Always discovering new sounds',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 600.ms),
-          
+          // Edit Button / Save Cancel Buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (!_isEditing)
+                ElevatedButton.icon(
+                  onPressed: () => setState(() => _isEditing = true),
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Edit Profile'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                  ),
+                )
+              else ...[
+                ElevatedButton.icon(
+                  onPressed: _isSaving ? null : _saveProfile,
+                  icon: _isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.check),
+                  label: Text(_isSaving ? 'Saving...' : 'Save'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accent,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() => _isEditing = false);
+                    _usernameController.text = username;
+                    _bioController.text = bio;
+                  },
+                  icon: const Icon(Icons.close),
+                  label: const Text('Cancel'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ],
+          ),
           const SizedBox(height: 20),
           
-          // Edit Profile Button
-          GradientButton(
-            text: 'Edit Profile',
-            onPressed: () {},
-            icon: Icons.edit,
-          ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.3),
+          // User Info (Editable or Display)
+          if (_isEditing)
+            Column(
+              children: [
+                TextField(
+                  controller: _usernameController,
+                  decoration: InputDecoration(
+                    labelText: 'Username',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.person),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _bioController,
+                  decoration: InputDecoration(
+                    labelText: 'Bio',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.description),
+                    hintText: 'Tell us about yourself',
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            )
+          else
+            Column(
+              children: [
+                Text(
+                  username,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ).animate().fadeIn(delay: 400.ms),
+                
+                const SizedBox(height: 12),
+                
+                if (bio.isNotEmpty)
+                  Text(
+                    bio,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ).animate().fadeIn(delay: 500.ms),
+              ],
+            ),
         ],
       ),
     );
@@ -115,9 +284,9 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildUserStats(BuildContext context) {
     final stats = [
-      {'label': 'Playlists', 'value': '12'},
-      {'label': 'Following', 'value': '45'},
-      {'label': 'Followers', 'value': '38'},
+      {'label': 'Playlists', 'value': '0'},
+      {'label': 'Following', 'value': '0'},
+      {'label': 'Followers', 'value': '0'},
       {'label': 'Hours', 'value': '120'},
     ];
 

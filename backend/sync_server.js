@@ -51,6 +51,8 @@ app.post('/api/auth/register', async (req, res) => {
       username,
       email,
       password: hashedPassword,
+      avatar: null,
+      bio: '',
       createdAt: new Date().toISOString()
     };
     
@@ -92,6 +94,42 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update user profile
+app.put('/api/users/:userId/profile', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { username, bio } = req.body;
+
+    // Find user
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if new username is already taken by another user
+    if (username && username !== user.username) {
+      const existingUser = users.find(u => u.username === username && u.id !== userId);
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username already taken' });
+      }
+    }
+
+    // Update user data
+    if (username) user.username = username;
+    if (bio !== undefined) user.bio = bio;
+
+    // Return updated user without password
+    const { password: _, ...userResponse } = user;
+    res.json({
+      message: 'Profile updated successfully',
+      user: userResponse
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

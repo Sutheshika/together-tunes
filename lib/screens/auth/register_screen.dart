@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_widgets.dart';
-import '../../config/api_config.dart';
-import 'dart:convert';
+import '../../config/api_config.dart';import '../../services/user_service.dart';import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'login_screen.dart';
 
@@ -65,33 +64,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        print('Registration successful: ${data['user']['username']}');
+        final user = data['user'];
+        
+        // Store user data in UserService
+        UserService().setUserData(
+          userId: user['id'],
+          username: user['username'],
+          email: user['email'],
+          avatar: user['avatar'],
+          bio: user['bio'],
+        );
+        
+        print('✅ Registration successful: ${user['username']}');
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Account created successfully! Please sign in.'),
+              content: Text('Account created successfully!'),
               backgroundColor: AppTheme.accent,
             ),
           );
           
-          // Navigate to login screen
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, _) => const LoginScreen(),
-              transitionDuration: const Duration(milliseconds: 300),
-              transitionsBuilder: (context, animation, _, child) {
-                return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(1.0, 0.0),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
-                );
-              },
-            ),
-          );
+          // Navigate directly to main app (already logged in after registration)
+          Navigator.pushReplacementNamed(context, '/main');
         }
       } else {
         final error = jsonDecode(response.body);
@@ -219,11 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Back Button
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_ios, color: AppTheme.textPrimary),
-                  padding: EdgeInsets.zero,
-                ).animate().fadeIn().slideX(begin: -0.2),
+                AppBackButton(),
 
                 const SizedBox(height: 40),
 
