@@ -4,11 +4,11 @@
 class ApiConfig {
   // Production: Replace with your actual server URL
   // Examples:
-  // - Local network: 'http://192.168.1.100:3001' (replace with your PC IP)
+  // - Local network: 'http://192.168.227.171:3001' (your PC IP)
   // - Localhost: 'http://localhost:3001' (only works on same device)
   // - Cloud: 'https://together-tunes-api.com'
   
-  static const String baseUrl = 'http://10.11.6.130:3001';
+  static const String baseUrl = 'http://192.168.227.171:3001';
   
   // API Endpoints
   static const String registerEndpoint = '/api/auth/register';

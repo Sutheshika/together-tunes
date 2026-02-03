@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
           'email': _emailController.text.trim(),
           'password': _passwordController.text,
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -71,81 +71,83 @@ class _LoginScreenState extends State<LoginScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('❌ Connection Error'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Cannot connect to backend server.'),
-                const SizedBox(height: 16),
-                const Text('Current URL:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                SelectableText(
-                  ApiConfig.loginUrl,
-                  style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
-                ),
-                const SizedBox(height: 16),
-                const Text('📋 FIX STEPS:', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accent)),
-                const SizedBox(height: 8),
-                const Text('1️⃣ Get your PC IP address:'),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[900],
-                    borderRadius: BorderRadius.circular(4),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Cannot connect to backend server.'),
+                  const SizedBox(height: 16),
+                  const Text('Current URL:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    ApiConfig.loginUrl,
+                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
                   ),
-                  child: const SelectableText(
-                    'ipconfig',
-                    style: TextStyle(fontFamily: 'monospace', fontSize: 10),
+                  const SizedBox(height: 16),
+                  const Text('📋 FIX STEPS:', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accent)),
+                  const SizedBox(height: 8),
+                  const Text('1️⃣ Get your PC IP address:'),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const SelectableText(
+                      'ipconfig',
+                      style: TextStyle(fontFamily: 'monospace', fontSize: 10),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                const Text('Look for "IPv4 Address" (e.g., 192.168.1.100)'),
-                const SizedBox(height: 16),
-                const Text('2️⃣ Edit lib/config/api_config.dart'),
-                const SizedBox(height: 8),
-                const Text('Change this line:'),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[900],
-                    borderRadius: BorderRadius.circular(4),
+                  const SizedBox(height: 12),
+                  const Text('Look for "IPv4 Address" (e.g., 192.168.1.100)'),
+                  const SizedBox(height: 16),
+                  const Text('2️⃣ Edit lib/config/api_config.dart'),
+                  const SizedBox(height: 8),
+                  const Text('Change this line:'),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const SelectableText(
+                      'static const String baseUrl = \'http://localhost:3001\';',
+                      style: TextStyle(fontFamily: 'monospace', fontSize: 9),
+                    ),
                   ),
-                  child: const SelectableText(
-                    'static const String baseUrl = \'http://localhost:3001\';',
-                    style: TextStyle(fontFamily: 'monospace', fontSize: 9),
+                  const SizedBox(height: 8),
+                  const Text('To:'),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const SelectableText(
+                      'static const String baseUrl = \'http://192.168.1.100:3001\';',
+                      style: TextStyle(fontFamily: 'monospace', fontSize: 9),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Text('To:'),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[900],
-                    borderRadius: BorderRadius.circular(4),
+                  const SizedBox(height: 16),
+                  const Text('3️⃣ Rebuild the app:'),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const SelectableText(
+                      'flutter clean && flutter pub get && flutter run',
+                      style: TextStyle(fontFamily: 'monospace', fontSize: 9),
+                    ),
                   ),
-                  child: const SelectableText(
-                    'static const String baseUrl = \'http://192.168.1.100:3001\';',
-                    style: TextStyle(fontFamily: 'monospace', fontSize: 9),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('3️⃣ Rebuild the app:'),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[900],
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const SelectableText(
-                    'flutter clean && flutter pub get && flutter run',
-                    style: TextStyle(fontFamily: 'monospace', fontSize: 9),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
             actions: [
               TextButton(

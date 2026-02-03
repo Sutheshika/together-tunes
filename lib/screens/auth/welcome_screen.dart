@@ -110,9 +110,9 @@ class WelcomeScreen extends StatelessWidget {
 
                 // Buttons Section
                 Expanded(
-                  flex: 1,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       // Login Button
                       SizedBox(
